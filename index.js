@@ -15,6 +15,11 @@ app.get("/", (req, res) => {
     res.send("Hello World");
 });
 
+app.use(cors({
+    origin: "https://dues-soft-video-conferencing-app.vercel.app/",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 
 // Store call IDs and corresponding sockets
