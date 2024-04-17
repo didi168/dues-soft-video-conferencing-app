@@ -9,7 +9,13 @@ const io = socketIo(server);
 
 const PORT = process.env.PORT || 8080;
 
-app.use(cors());
+app.use(cors()); // Enable CORS for all routes
+
+app.get("/", (req, res) => {
+    res.send("Hello World");
+});
+
+
 
 // Store call IDs and corresponding sockets
 const callIdMap = new Map();
@@ -20,12 +26,11 @@ io.on("connection", (socket) => {
     // Handle disconnect event
     socket.on("disconnect", () => {
         // If the disconnected socket is associated with a call ID, remove it from the map
-        for (const [key, value] of callIdMap.entries()) {
+        callIdMap.forEach((value, key) => {
             if (value === socket.id) {
                 callIdMap.delete(key);
-                break;
             }
-        }
+        });
         socket.broadcast.emit("callEnded");
     });
 
