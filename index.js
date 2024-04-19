@@ -1,68 +1,53 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
-const cors = require("cors");
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const bodyParser = require('body-parser');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const PORT = process.env.PORT || 8080;
+app.use(bodyParser.json());
 
-app.use(cors()); // Enable CORS for all routes
+let meetingID = '';
 
-app.get("/", (req, res) => {
-    res.send("Hello World");
+app.get('/generateMeetingID', (req, res) => {
+    meetingID = Math.floor(10000 + Math.random() * 90000).toString(); // Generate a random 5-digit number
+    res.json({ meetingID });
+  });
+
+app.post('/verifyMeetingID', (req, res) => {
+  const { enteredMeetingID } = req.body;
+  if (enteredMeetingID === meetingID) {
+    res.json({ isValid: true });
+  } else {
+    res.json({ isValid: false });
+  }
 });
 
-app.use(cors({
-    origin: "https://dues-soft-video-conferencing-app.vercel.app/",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
-
-
-// Store call IDs and corresponding sockets
-const callIdMap = new Map();
-
-io.on("connection", (socket) => {
-    socket.emit("me", socket.id);
-
-    // Handle disconnect event
-    socket.on("disconnect", () => {
-        // If the disconnected socket is associated with a call ID, remove it from the map
-        callIdMap.forEach((value, key) => {
-            if (value === socket.id) {
-                callIdMap.delete(key);
-            }
-        });
-        socket.broadcast.emit("callEnded");
-    });
-
-    // Handle call initiation event
-    socket.on("startCall", (callId) => {
-        // Store the call ID and associated socket ID in the map
-        callIdMap.set(callId, socket.id);
-    });
-
-    // Handle call request event
-    socket.on("callUser", ({ userToCall, signalData, from, name }) => {
-        // Check if the call ID exists in the map
-        if (callIdMap.has(userToCall)) {
-            // Get the socket ID associated with the call ID
-            const calleeSocketId = callIdMap.get(userToCall);
-            // Emit the callUser event to the callee socket
-            io.to(calleeSocketId).emit("callUser", { signal: signalData, from, name });
-        } else {
-            // Handle case where the call ID doesn't exist (e.g., notify the caller)
-            console.log(`Call ID ${userToCall} not found`);
-        }
-    });
-
-    // Handle call answer event
-    socket.on("answerCall", (data) => {
-        io.to(data.to).emit("callAccepted", data.signal);
-    });
+app.get('/', (req, res) => {
+  res.send('Hello! The server is running.');
 });
 
-server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+// Socket.IO event handlers
+io.on('connection', (socket) => {
+  console.log('A client connected');
+  
+  // Example event handler
+  socket.on('chat message', (msg) => {
+    console.log('Message from client:', msg);
+    // Broadcast the message to all clients
+    io.emit('chat message', msg);
+  });
+});
+
+// Middleware to handle unknown routes
+app.use((req, res, next) => {
+  res.status(404).send('Error 404: Page not found');
+});
+
+const port = process.env.PORT || 3001;
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+
